@@ -15,10 +15,17 @@ cowrie/var/**/*.log
 cowrie/var/**/*.json
 !sample-output/**
 
+# Runtime Conpot logs
+conpot/var/log/*
+!conpot/var/log/.gitkeep
+
+# Local PDF build venv (optional)
+.venv-pdf/
+.venv/
+
 # Python
 __pycache__/
 *.py[cod]
-.venv/
 venv/
 
 # OS / editor

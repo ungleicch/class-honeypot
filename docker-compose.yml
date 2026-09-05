@@ -1,8 +1,12 @@
-# Class honeypot stack — Cowrie (SSH/Telnet medium-interaction)
-# Image pin: cowrie/cowrie:3.0.13 (Docker Hub, Aug 2026). To re-pin later:
+# Class honeypot stack — Cowrie (SSH/Telnet) + Conpot (ICS/SCADA)
+# Image pins (reproducible class labs):
+#   cowrie/cowrie:3.0.13
+#   dtagdevsec/conpot:24.04.1   (T-Pot build; better than stale honeynet/conpot:latest)
+# To re-pin later:
 #   curl -s 'https://hub.docker.com/v2/repositories/cowrie/cowrie/tags?page_size=20' \
 #     | python3 -c "import sys,json; print('\n'.join(t['name'] for t in json.load(sys.stdin)['results']))"
-# Prefer a version tag (3.0.13) over :latest for reproducible class labs.
+#   curl -s 'https://hub.docker.com/v2/repositories/dtagdevsec/conpot/tags?page_size=20' \
+#     | python3 -c "import sys,json; print('\n'.join(t['name'] for t in json.load(sys.stdin)['results']))"
 
 services:
   cowrie:
@@ -27,6 +31,48 @@ services:
     # If bind mounts fail with PermissionError, on the host run:
     #   sudo chown -R 1000:1000 cowrie/var
     # (try 999:999 if your image build uses the older default)
+    networks:
+      - honeypot_net
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  conpot:
+    # Pinned T-Pot Conpot image (Alpine + mushorg/conpot). Prefer this over
+    # honeynet/conpot:latest (last pushed ~2019, unversioned only).
+    image: dtagdevsec/conpot:24.04.1
+    container_name: class-honeypot-conpot
+    restart: unless-stopped
+    read_only: true
+    environment:
+      CONPOT_CONFIG: /etc/conpot/conpot.cfg
+      CONPOT_JSON_LOG: /var/log/conpot/conpot.json
+      CONPOT_LOG: /var/log/conpot/conpot.log
+      # default = Siemens S7-200 style (HTTP HMI + Modbus + SNMP + S7comm + …)
+      CONPOT_TEMPLATE: default
+      CONPOT_TMP: /tmp/conpot
+    ports:
+      # Class-safe high host ports → real ICS ports inside the container.
+      # Scanners often probe 502/161/102; use cloud firewall DNAT or the
+      # privileged mappings documented in README for higher hit rates.
+      - "${CONPOT_MODBUS_HOST_PORT:-5020}:502"       # Modbus TCP
+      - "${CONPOT_HTTP_HOST_PORT:-8080}:80"          # HTTP “HMI”
+      - "${CONPOT_SNMP_HOST_PORT:-1161}:161/udp"     # SNMP
+      - "${CONPOT_S7_HOST_PORT:-1102}:102"           # S7comm
+      # Optional privileged (needs root / low ports free; uncomment carefully):
+      # - "502:502"
+      # - "80:80"
+      # - "161:161/udp"
+      # - "102:102"
+    volumes:
+      - ./conpot/etc/conpot.cfg:/etc/conpot/conpot.cfg:ro
+      - ./conpot/var/log:/var/log/conpot
+    tmpfs:
+      - /tmp/conpot:uid=2000,gid=2000,mode=1777
     networks:
       - honeypot_net
     security_opt:
