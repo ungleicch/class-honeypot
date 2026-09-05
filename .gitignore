@@ -1,0 +1,28 @@
+# Local env
+.env
+
+# Runtime Cowrie data (keep directory structure via .gitkeep)
+cowrie/var/log/cowrie/*
+!cowrie/var/log/cowrie/.gitkeep
+cowrie/var/lib/cowrie/downloads/*
+!cowrie/var/lib/cowrie/downloads/.gitkeep
+cowrie/var/lib/cowrie/tty/
+cowrie/var/lib/cowrie/*.pickle
+cowrie/var/lib/cowrie/*.pub
+cowrie/var/lib/cowrie/*.key
+cowrie/var/run/
+cowrie/var/**/*.log
+cowrie/var/**/*.json
+!sample-output/**
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# OS / editor
+.DS_Store
+*.swp
+.idea/
+.vscode/

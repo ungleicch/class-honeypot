@@ -1,0 +1,42 @@
+# Class honeypot stack — Cowrie (SSH/Telnet medium-interaction)
+# Image pin: cowrie/cowrie:3.0.13 (Docker Hub, Aug 2026). To re-pin later:
+#   curl -s 'https://hub.docker.com/v2/repositories/cowrie/cowrie/tags?page_size=20' \
+#     | python3 -c "import sys,json; print('\n'.join(t['name'] for t in json.load(sys.stdin)['results']))"
+# Prefer a version tag (3.0.13) over :latest for reproducible class labs.
+
+services:
+  cowrie:
+    image: cowrie/cowrie:3.0.13
+    container_name: class-honeypot-cowrie
+    restart: unless-stopped
+    ports:
+      # Prefer non-privileged host ports for class safety.
+      # Host 2222 → container SSH (2222); host 2223 → Telnet (2223).
+      # To appear on real port 22, use firewall redirect (see README) — do NOT
+      # bind host 22 unless you have root and instructor approval.
+      - "${COWRIE_SSH_HOST_PORT:-2222}:2222"
+      - "${COWRIE_TELNET_HOST_PORT:-2223}:2223"
+    volumes:
+      # Mount ONLY our override file so the image keeps userdb.txt and defaults.
+      - ./cowrie/etc/cowrie.cfg:/cowrie/cowrie-git/etc/cowrie.cfg:ro
+      # Persistent state: JSON logs, downloads, tty sessions, SSH host keys
+      - ./cowrie/var:/cowrie/cowrie-git/var
+    environment:
+      COWRIE_HOSTNAME: "${COWRIE_HOSTNAME:-lab-srv01}"
+    # Cowrie 3.0.x images typically run as a fixed non-root UID (often 1000).
+    # If bind mounts fail with PermissionError, on the host run:
+    #   sudo chown -R 1000:1000 cowrie/var
+    # (try 999:999 if your image build uses the older default)
+    networks:
+      - honeypot_net
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+networks:
+  honeypot_net:
+    driver: bridge
